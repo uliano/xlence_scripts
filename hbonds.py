@@ -51,7 +51,7 @@ def process_hbonds(raw_bonds, topology, sel1='all', sel2='all', freq=5, join_res
         return hb_labels, times, hb_matrix
 
 
-def plot_bonds(the_labels, the_times, the_matrix, width=10, height=None):
+def plot_bonds(the_labels, the_times, the_matrix, width=10, height=None, title=None):
     if not height:
         height = 0.2 * len(the_labels) + 1
     the_times = np.array(the_times)
@@ -76,6 +76,8 @@ def plot_bonds(the_labels, the_times, the_matrix, width=10, height=None):
     ax.set_yticks(list(range(len(the_labels))))
     ax.set_yticklabels(the_labels)
     ax.set_xlabel(xlabel)
+    if title:
+        plt.title(title)
 
     plt.tight_layout()
 
