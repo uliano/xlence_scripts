@@ -51,6 +51,24 @@ def process_hbonds(raw_bonds, topology, sel1='all', sel2='all', freq=5, join_res
         return hb_labels, times, hb_matrix
 
 
+def plot_num_bonds(the_times, the_matrix, title=None):
+    num_bonds = the_matrix.sum(axis=0)
+    the_times = np.array(the_times)
+    if np.max(the_times) > 10000:
+        xlabel = 'time (ns)'
+        the_times /= 1000.0
+    else:
+        xlabel = 'time (ps)'
+    if title:
+        plt.title(title)
+    plt.plot(the_times, num_bonds)
+
+    plt.xlabel(xlabel)
+    plt.ylabel('# hbonds')
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_bonds(the_labels, the_times, the_matrix, width=10, height=None, title=None):
     if not height:
         height = 0.2 * len(the_labels) + 1
@@ -84,12 +102,18 @@ def plot_bonds(the_labels, the_times, the_matrix, width=10, height=None, title=N
     plt.show()
 
 
+def save_labels(the_labels, filename):
+    with open(filename, 'wt') as out:
+        for label in the_labels:
+            out.write(label+'\n')
+
+
 if __name__ == '__main__':
-    tmp = '/home/groups/eberini/Merck/MD_giulia/analysis2/avelumab_g0f_hbonds.pickle'
-    top = '/home/groups/eberini/Merck/MD_giulia/analysis2/avelumab_g0f.pdb'
+    tmp = '/home/groups/eberini/Merck/AMBER/analysis/g0f_rep1_hbonds.pickle'
+    top = '/home/groups/eberini/Merck/AMBER/analysis/g0f_nowat.pdb'
 
     raw_hbonds = pickle.load(open(tmp, 'rb'))
-    labels, time, matrix = process_hbonds(raw_hbonds, top, sel1='protein', sel2='index 20034 to 20225',
-                                          freq=0, join_residue=False)
-    print(labels)
-    plot_bonds(labels, time, matrix)
+    labels, time, matrix = process_hbonds(raw_hbonds, top, sel1='protein', sel2='resSeq 1331 to 1338',
+                                          freq=0, join_residue=True)
+    plot_num_bonds(time, matrix, 'Pippo\'s Hbonds')
+    save_labels(labels, 'pippo.txt')
