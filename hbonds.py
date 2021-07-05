@@ -79,6 +79,17 @@ def plot_num_bonds(the_times, the_matrix, title=None):
 
 
 def plot_many_bonds(the_times, the_matrices, the_labels, title=None):
+    xlabel = 'time (ps)'
+    times = []
+    for tim in the_times:
+        if np.max(tim) > 10000:
+            xlabel = 'time (ns)'
+    for tim in the_times:
+        if xlabel == 'time (ps)':
+            times.append(tim)
+        else:
+            times.append(tim / 1000.0)
+
     num_bonds = []
     for mat in the_matrices:
         num_bonds.append(mat.sum(axis=0))
@@ -98,10 +109,10 @@ def plot_many_bonds(the_times, the_matrices, the_labels, title=None):
     plt.xlabel(xlabel)
     plt.ylabel('# hbonds')
 
-    for nb, lab in zip(num_bonds, the_labels):
+    for time, nb, lab in zip(times, num_bonds, the_labels):
 
-        plt.scatter(the_times, nb, alpha=0.1)
-        y = lowess(nb, the_times, return_sorted=True, frac=0.5)
+        plt.scatter(times, nb, alpha=0.1)
+        y = lowess(nb, times, return_sorted=True, frac=0.5)
         plt.plot(y[:, 0], y[:, 1], linewidth=4, label=lab)
 
     plt.show()
