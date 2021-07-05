@@ -2,6 +2,15 @@ import pickle
 import numpy as np
 import mdtraj as md
 import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.api as sm
+lowess = sm.nonparametric.lowess
+
+
+plt.style.use('seaborn-darkgrid')
+
+# here set the number of different plots
+colors = sns.color_palette("hls", 9)
 
 
 def process_hbonds(raw_bonds, topology, sel1='all', sel2='all', freq=5, join_residue=True):
@@ -69,6 +78,35 @@ def plot_num_bonds(the_times, the_matrix, title=None):
     plt.show()
 
 
+def plot_many_bonds(the_times, the_matrices, the_labels, title=None):
+    num_bonds = []
+    for mat in the_matrices:
+        num_bonds.append(mat.sum(axis=0))
+
+    fig = plt.figure(figsize=(16, 8), constrained_layout=True)
+    ax = fig.add_subplot(111)
+    ax.set_prop_cycle('color', colors)
+
+    if np.max(the_times) > 10000:
+        xlabel = 'time (ns)'
+        the_times /= 1000.0
+    else:
+        xlabel = 'time (ps)'
+    if title:
+        plt.title(title)
+
+    plt.xlabel(xlabel)
+    plt.ylabel('# hbonds')
+
+    for nb, lab in zip(num_bonds, the_labels):
+
+        plt.scatter(the_times, nb, alpha=0.1)
+        y = lowess(nb, the_times, return_sorted=True, frac=0.5)
+        plt.plot(y[:, 0], y[:, 1], linewidth=4, label=lab)
+
+    plt.show()
+
+
 def plot_bonds(the_labels, the_times, the_matrix, width=10, height=None, title=None):
     if not height:
         height = 0.2 * len(the_labels) + 1
@@ -86,11 +124,11 @@ def plot_bonds(the_labels, the_times, the_matrix, width=10, height=None, title=N
         cmap.set_under('w')
         plot = ax.imshow(the_matrix, aspect='auto', cmap=cmap, interpolation='nearest', extent=extent,
                          vmin=np.min(the_matrix)+0.5, vmax=np.max(the_matrix)+.5, origin='lower')
-        cbar = fig.colorbar(plot,ticks=np.arange(np.min(the_matrix),np.max(the_matrix)+1), extend='min')
+        cbar = fig.colorbar(plot, ticks=np.arange(np.min(the_matrix), np.max(the_matrix)+1), extend='min')
         cbar.set_label('# of hbonds')
     else:
         ax.imshow(the_matrix, aspect='auto', cmap='binary', interpolation='nearest', extent=extent, origin='lower')
-        print(np.max(the_matrix),np.min(the_matrix))
+        print(np.max(the_matrix), np.min(the_matrix))
     ax.set_yticks(list(range(len(the_labels))))
     ax.set_yticklabels(the_labels)
     ax.set_xlabel(xlabel)
