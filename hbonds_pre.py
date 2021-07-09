@@ -22,14 +22,12 @@ def do_hbonds(trajectory, topology=None, verbose=True, distance_cutoff=0.35, ang
             last_time = ((i + 1) * len(trj) - 1) * dt
             if first_time >= end_time or last_time <= start_time:
                 continue
-
-        elif trj.time[0] >= end_time or trj.time[-1] <= start_time:
-            continue
-
-        if dt:
             _time = np.linspace(first_time, last_time+dt, len(trj)+1)
             indices = np.argwhere((_time >= start_time) & (_time <= end_time))
+
         else:
+            if trj.time[0] >= end_time or trj.time[-1] <= start_time:
+                continue
             indices = np.argwhere((trj.time >= start_time) & (trj.time <= end_time))
 
         keep = list(range(0, chunk_size, skip))
