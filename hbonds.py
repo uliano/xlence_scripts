@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 import mdtraj as md
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import seaborn as sns
 import statsmodels.api as sm
 lowess = sm.nonparametric.lowess
@@ -60,7 +61,7 @@ def process_hbonds(raw_bonds, topology, sel1='all', sel2='all', freq=5, join_res
         return hb_labels, times, hb_matrix
 
 
-def plot_num_bonds(the_times, the_matrix, title=None):
+def plot_num_bonds(the_times, the_matrix, title=None, width=10):
     num_bonds = the_matrix.sum(axis=0)
     the_times = np.array(the_times)
     if np.max(the_times) > 10000:
@@ -78,7 +79,8 @@ def plot_num_bonds(the_times, the_matrix, title=None):
     plt.show()
 
 
-def plot_many_bonds(the_times, the_matrices, the_labels, title=None):
+def plot_many_bonds(the_times, the_matrices, the_labels, the_colors, title=None, alpha=0.1, width=10):
+    fig = plt.figure(figsize=(width, width / 2))
     xlabel = 'time (ps)'
     times = []
     for tim in the_times:
@@ -88,33 +90,33 @@ def plot_many_bonds(the_times, the_matrices, the_labels, title=None):
         if xlabel == 'time (ps)':
             times.append(tim)
         else:
-            times.append(tim / 1000.0)
+            times.append([t / 1000.0 for t in tim])
 
     num_bonds = []
     for mat in the_matrices:
         num_bonds.append(mat.sum(axis=0))
 
-    fig = plt.figure(figsize=(16, 8), constrained_layout=True)
+    fig = plt.figure(figsize=(width, width/2), constrained_layout=True)
     ax = fig.add_subplot(111)
-    ax.set_prop_cycle('color', colors)
+    # ax.set_prop_cycle('color', colors)
 
-    if np.max(the_times) > 10000:
-        xlabel = 'time (ns)'
-        the_times /= 1000.0
-    else:
-        xlabel = 'time (ps)'
     if title:
         plt.title(title)
 
     plt.xlabel(xlabel)
     plt.ylabel('# hbonds')
 
-    for time, nb, lab in zip(times, num_bonds, the_labels):
+    for t, nb, lab, color in zip(times, num_bonds, the_labels, the_colors):
+        plt.scatter(t, nb, alpha=alpha, color=color)
 
-        plt.scatter(times, nb, alpha=0.1)
-        y = lowess(nb, times, return_sorted=True, frac=0.5)
-        plt.plot(y[:, 0], y[:, 1], linewidth=4, label=lab)
+    for t, nb, lab, color in zip(times, num_bonds, the_labels, the_colors):
+        y = lowess(nb, t, return_sorted=True, frac=0.5)
+        plt.plot(y[:, 0], y[:, 1], linewidth=4, label=lab, color=color)
 
+    y = ax.get_yaxis()
+    y.set_major_locator(MaxNLocator(integer=True))
+
+    plt.legend()
     plt.show()
 
 
