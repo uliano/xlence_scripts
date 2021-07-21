@@ -79,7 +79,7 @@ def plot_num_bonds(the_times, the_matrix, title=None, width=10):
     plt.show()
 
 
-def plot_many_bonds(the_times, the_matrices, the_labels, the_colors, title=None, alpha=0.1, width=10):
+def plot_many_bonds(the_times, the_matrices, the_labels, the_colors, title=None, alpha=0.1, width=10, divisor=1.0):
     fig = plt.figure(figsize=(width, width / 2))
     xlabel = 'time (ps)'
     times = []
@@ -94,7 +94,7 @@ def plot_many_bonds(the_times, the_matrices, the_labels, the_colors, title=None,
 
     num_bonds = []
     for mat in the_matrices:
-        num_bonds.append(mat.sum(axis=0))
+        num_bonds.append(mat.sum(axis=0)/divisor)
 
     fig = plt.figure(figsize=(width, width/2), constrained_layout=True)
     ax = fig.add_subplot(111)
