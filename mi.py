@@ -183,7 +183,9 @@ def main():
     x = preproc(args)
     nt, na, d = x.shape
 
+    print('Calculating Generalized Correlations ...')
     MI = get_MI(x, args.j, dump=args.pickle, out=args.out)
+    print("Done.")
 
     with open(args.out + "_MI.dat", "w") as f:
         f.write(f"# MI matrix, {na} x {na}\n")
@@ -199,7 +201,9 @@ def main():
     plt.savefig(args.out + "_MI.png")
 
     if args.corr:
+        print("Calculating Pearson Correlation Coefficients Matrix")
         C = get_cormat(x.reshape(nt, na, d))
+        print("Done.")
         with open(args.out + "_Cor.dat", "w") as f:
             f.write(f"# Correlation matrix, {na} x {na}\n")
             for row in C:
@@ -219,6 +223,21 @@ def main():
         fig.tight_layout()
         plt.savefig(args.out + "_MICor.png")
 
-
+    print("All done.")
+    print(r"""
+            ____
+            /____ `\
+           ||_  _`\ \
+     .-.   `|O, O  ||
+     | |    (/    -)\
+     | |    |`-'` |\`
+  __/  |    | _/  |
+ (___) \.  _.\__. `\___
+ (___)  )\/  \    _/  ~\.
+ (___) . \   `--  _   `\
+  (__)-    ,/        (   |
+       `--~|         |   |
+           |         |   | ")
+    """)
 if __name__ == "__main__":
     main()
