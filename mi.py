@@ -40,7 +40,7 @@ def get_MI(x, njobs, dump=False, out="corr"):
 
     # postprocess
     # (ai, xi, aj, xj)
-    MI = MI.reshape(na, d, na, d).max(axis=(1, 3))
+    MI = MI.reshape(na, d, na, d).mean(axis=(1, 3))
     MI = np.sqrt(1 - np.exp(-2 * MI))  # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
     return MI
 
