@@ -1,6 +1,7 @@
 import argparse
 import multiprocessing as mp
 import time
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +25,7 @@ def get_MI(x, njobs, dump=False, out="corr"):
     start_time = time.time()
     with mp.Pool(processes=njobs) as pool:
         res = pool.imap(worker, (x[:, : i + 1] for i in range(na * d)))
-        for i, r in enumerate(res):
+        for i, r in tqdm(enumerate(res), total=na * d):
             MI[i, : i + 1] = r
             MI[: i + 1, i] = r
     print(
@@ -79,7 +80,7 @@ def preproc_schrodinger(args):
         msys, cms, trj = traj_util.read_cms_and_traj(args.cms)
 
     slicer = (
-        [int(i) if i else None for i in args.s.split(":")]
+        slice(*[int(i) if i else None for i in args.s.split(":")])
         if args.s
         else slice(None, None)
     )
@@ -109,7 +110,7 @@ def preproc_mda(args):
         args.t if isinstance(args.t, list) else [args.t]
     )  # better way to handle this using argparse action='append'
     slicer = (
-        [int(i) if i else None for i in args.s.split(":")]
+        slice(*[int(i) if i else None for i in args.s.split(":")])
         if args.s
         else slice(None, None)
     )
