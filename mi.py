@@ -34,6 +34,7 @@ def get_MI(x, njobs, dump=False, out="corr"):
         for i, r in tqdm(enumerate(res), total=na * d):
             MI[i, : i + 1] = r
             MI[: i + 1, i] = r
+    print()
     print(
         f"finished {na} atoms for {nt} frames in", time.time() - start_time, "seconds"
     )
