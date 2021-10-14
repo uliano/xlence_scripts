@@ -3,6 +3,7 @@
 import argparse
 import multiprocessing as mp
 import time
+from datetime import timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,7 +37,7 @@ def get_MI(x, njobs, dump=False, out="corr"):
             MI[: i + 1, i] = r
     print()
     print(
-        f"finished {na} atoms for {nt} frames in", time.time() - start_time, "seconds"
+        f"finished {na} atoms for {nt} frames in {timedelta(seconds=time.time() - start_time)}"
     )
 
     if dump:
