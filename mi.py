@@ -80,7 +80,7 @@ def get_cormat(x):
 def preproc_schrodinger(args):
     from schrodinger.application.desmond.packages import topo, traj, traj_util
 
-    align_sel = [SCHR_CA] if args.align == DEFAULT_CA else args.align
+    align_sel = SCHR_CA if args.align == DEFAULT_CA else args.align
     corr_sel = [SCHR_CA] if args.asl == DEFAULT_CA else args.asl
 
     if args.t:
@@ -115,7 +115,7 @@ def preproc_mda(args):
     import MDAnalysis as mda
     from MDAnalysis.analysis import align
 
-    align_sel = [MDA_CA] if args.align == DEFAULT_CA else args.align
+    align_sel = MDA_CA if args.align == DEFAULT_CA else args.align
     corr_sel = [MDA_CA] if args.asl == DEFAULT_CA else args.asl
 
     top = args.cms
