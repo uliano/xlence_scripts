@@ -3,11 +3,15 @@
 import argparse
 import multiprocessing as mp
 import time
-from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.feature_selection import mutual_info_regression
+from tqdm import tqdm
+
+DEFAULT_CA = "default_CA"
+SCHR_CA = "a.pt CA"
+MDA_CA = "name CA"
 
 
 def worker(x):  # -> (na * d)[:i]
@@ -43,7 +47,9 @@ def get_MI(x, njobs, dump=False, out="corr"):
     # postprocess
     # (ai, xi, aj, xj)
     MI = MI.reshape(na, d, na, d).mean(axis=(1, 3))
-    MI = np.sqrt(1 - np.exp(-2 * MI))  # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
+    MI = np.sqrt(
+        1 - np.exp(-2 * MI)
+    )  # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
     return MI
 
 
@@ -72,12 +78,12 @@ def get_cormat(x):
 def preproc_schrodinger(args):
     from schrodinger.application.desmond.packages import topo, traj, traj_util
 
-    align_sel = "a.pt CA" if args.align == "CA" else args.align
-    corr_sel = "a.pt CA" if args.asl == "CA" else args.asl
+    align_sel = [SCHR_CA] if args.align == DEFAULT_CA else args.align
+    corr_sel = [SCHR_CA] if args.asl == DEFAULT_CA else args.asl
 
     if args.t:
         msys, cms = topo.read_cms(args.cms)
-        trj = traj.read_traj(args.t)
+        trj = traj.read_traj(args.t[0])
     else:
         msys, cms, trj = traj_util.read_cms_and_traj(args.cms)
 
@@ -95,8 +101,11 @@ def preproc_schrodinger(args):
         ref = cms.extract(cms.select_atom(align_sel)).getXYZ()
         trj = topo.superimpose(msys, fit_gids, trj, ref)
 
-    gids = topo.asl2gids(cms, corr_sel)
-    x = np.array([fr.pos(gids) for fr in trj])  # type: ignore
+    x = []
+    for sel in corr_sel:
+        gids = topo.asl2gids(cms, sel)
+        x.append(np.array([fr.pos(gids) for fr in trj]))  # type: ignore
+    x = np.concatenate(x, axis=1)
     return x
 
 
@@ -104,20 +113,17 @@ def preproc_mda(args):
     import MDAnalysis as mda
     from MDAnalysis.analysis import align
 
-    align_sel = "name CA" if args.align == "CA" else args.align
-    corr_sel = "name CA" if args.asl == "CA" else args.asl
+    align_sel = [MDA_CA] if args.align == DEFAULT_CA else args.align
+    corr_sel = [MDA_CA] if args.asl == DEFAULT_CA else args.asl
 
     top = args.cms
-    traj = (
-        args.t if isinstance(args.t, list) else [args.t]
-    )  # better way to handle this using argparse action='append'
     slicer = (
         slice(*[int(i) if i else None for i in args.s.split(":")])
         if args.s
         else slice(None, None)
     )
 
-    U = mda.Universe(top, *traj)
+    U = mda.Universe(top, *args.t)
 
     if args.align:
         print(f'Aligning trajectory to "{align_sel}"')
@@ -126,21 +132,29 @@ def preproc_mda(args):
         align.AlignTraj(mobile, U, select=align_sel, in_memory=True).run()
         U = mobile
 
-    U.trajectory[0]
-    atoms = U.select_atoms(corr_sel)
-    x = np.array([atoms.positions for _ in U.trajectory[slicer]])
+    x = []
+    for sel in corr_sel:
+        U.trajectory[0]
+        atoms = U.select_atoms(sel)
+        x.append(np.array([atoms.positions for _ in U.trajectory[slicer]]))
+    x = np.concatenate(x, axis=1)
     return x
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="""
-            Calculate generalized correlations based on mutual information of selected atoms fluctuations
-            example:
-            mi.py my_md.pdb corr_out -t my_md.xtc -backend mda -j 16 -s ::10 -align "name CA and segid A" -asl "name CA"
-            """
+    Calculate generalized correlations based on mutual information of selected atoms fluctuations.
+    example:
+
+    mi.py my_md.pdb corr_out -t my_md.xtc -backend mda -j 16 -s ::10 -align "name CA and segid A" -asl "name CA and segid A" "name CB and segid B" -corr
+    """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("cms", help="input topology file")
+    parser.add_argument(
+        "cms",
+        help="input topology file: cms for schrodinger backend, or any format supported by MDAnalysis",
+    )
     parser.add_argument("out", help="base name for the output")
     parser.add_argument(
         "-backend",
@@ -150,8 +164,9 @@ def main():
     )
     parser.add_argument(
         "-t",
-        help="trj dir, this is mandatory if backend is MDAnalysis",
+        help="trj dir. If backend is MDAnalysis, multiple trajectories to be concatenated can be supplied",
         metavar="trajectory",
+        nargs="+",
     )
     parser.add_argument(
         "-j",
@@ -160,7 +175,12 @@ def main():
         metavar="N cores",
         default=1,
     )
-    parser.add_argument("-asl", help="atom selection, default CA", default="CA")
+    parser.add_argument(
+        "-asl",
+        help="atom selection. You can specify multiple selections that will be concatenated sequentially and will appear as contiguous blocks in the results. Default CA",
+        nargs="+",
+        default=DEFAULT_CA,
+    )
     parser.add_argument("-s", help="slicer", metavar="START:END:STEP")
     parser.add_argument(
         "-pickle", help="dump unmodified MI matrix to pickle file", action="store_true"
@@ -171,7 +191,7 @@ def main():
     parser.add_argument(
         "-align",
         help="asl to align trajectory, default CA",
-        const="CA",
+        const=DEFAULT_CA,
         nargs="?",
         metavar="ASL",
     )
@@ -185,7 +205,7 @@ def main():
     x = preproc(args)
     nt, na, d = x.shape
 
-    print('Calculating Generalized Correlations ...')
+    print("Calculating Generalized Correlations ...")
     MI = get_MI(x, args.j, dump=args.pickle, out=args.out)
     print("Done.")
 
@@ -197,7 +217,7 @@ def main():
 
     fig = plt.figure(figsize=(15, 15))
     fig.suptitle("Mutual Information")
-    plt.imshow(MI, origin="lower", cmap='inferno')
+    plt.imshow(MI, origin="lower", cmap="inferno")
     plt.colorbar()
     fig.tight_layout()
     plt.savefig(args.out + "_MI.png")
@@ -213,20 +233,21 @@ def main():
                 f.write("\n")
         fig = plt.figure(figsize=(15, 15))
         fig.suptitle("Correlation Matrix")
-        plt.imshow(C, origin="lower", cmap='inferno')
+        plt.imshow(C, origin="lower", cmap="inferno")
         plt.colorbar()
         fig.tight_layout()
         plt.savefig(args.out + "_Cor.png")
 
         fig = plt.figure(figsize=(15, 15))
         fig.suptitle("MI/Cor Matrix")
-        plt.imshow(np.tril(MI) + np.triu(C, k=1), origin="lower", cmap='inferno')
+        plt.imshow(np.tril(MI) + np.triu(C, k=1), origin="lower", cmap="inferno")
         plt.colorbar()
         fig.tight_layout()
         plt.savefig(args.out + "_MICor.png")
 
     print("All done.")
-    print(r"""
+    print(
+        r"""
             ____
             /____ `\
            ||_  _`\ \
@@ -240,6 +261,9 @@ def main():
   (__)-    ,/        (   |
        `--~|         |   |
            |         |   | ")
-    """)
+    """
+    )
+
+
 if __name__ == "__main__":
     main()
