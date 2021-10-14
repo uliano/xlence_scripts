@@ -250,7 +250,7 @@ def main():
     print("All done.")
     print(
         r"""
-            ____
+              ____
             /____ `\
            ||_  _`\ \
      .-.   `|O, O  ||
