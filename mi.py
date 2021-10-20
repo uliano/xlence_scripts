@@ -7,7 +7,8 @@ from datetime import timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.feature_selection import mutual_info_regression
+from scipy.special import digamma
+from sklearn.neighbors import KDTree, NearestNeighbors
 from tqdm import tqdm
 
 DEFAULT_CA = "default_CA"
@@ -15,58 +16,107 @@ SCHR_CA = "a.pt CA"
 MDA_CA = "name CA"
 
 
-def worker(x):  # -> (na * d)[:i]
-    return mutual_info_regression(
-        x, x[:, -1], discrete_features=False, n_neighbors=6, random_state=42
-    )
+def _worker(k):
+    def inner(pair):
+        return calculate_mi(*pair, k=k)
+
+    return inner
 
 
-def get_MI(x, njobs, dump=False, out="corr"):
+def get_MI(x, k=6, njobs=1, dump=False):
     nt, na, d = x.shape
-    x = x - x.mean(axis=0)  # center atoms on their mean position
+    x = x - x.mean(axis=0)  # get atom fluctuations oround their mean position
     # normalize fluctuation interval between 0, 1 WARNING: is this required?
     x = (x - x.min(axis=0)) / np.ptp(x, axis=0)
-    x = x.reshape(nt, na * d)
-    MI = np.zeros((na * d, na * d))
+    a = x.transpose((1, 0, -1))  # -> (na, nt, d)
+
+    pairs = ((a[i], a[j]) for i in range(na) for j in range(i))
+
+    MI = np.zeros((na, na))
 
     start_time = time.time()
     with mp.Pool(processes=njobs) as pool:
-        res = pool.imap(worker, (x[:, : i + 1] for i in range(na * d)))
-        for i, r in tqdm(enumerate(res), total=na * d):
-            MI[i, : i + 1] = r
-            MI[: i + 1, i] = r
+        res = pool.imap(_worker(k), pairs)
+        MI[np.tril_indices_from(MI, -1)] = np.fromiter(
+            tqdm(res, total=int(na * (na - 1) / 2)),
+            dtype=np.float64
+        )
     print()
     print(
         f"finished {na} atoms for {nt} frames in {timedelta(seconds=time.time() - start_time)}"
     )
 
+    MI += np.flip(MI)
+
     if dump:
         import pickle
 
-        with open(out + ".pickle", "wb") as f:
+        with open(dump + ".pickle", "wb") as f:
             pickle.dump(MI, f)
 
     # postprocess
-    # (ai, xi, aj, xj)
-    MI = MI.reshape(na, d, na, d).mean(axis=(1, 3))
-    MI = np.sqrt(
-        1 - np.exp(-2 * MI)
-    )  # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
+    # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
+    MI = np.sqrt(1 - np.exp(-2 * MI))
+    MI[np.diag_indices_from(MI)] = 1
     return MI
+
+
+def calculate_mi(x, y, k=6):
+    """
+    Calculate Mutual Information between two continuous multidimensional random variables
+    using Nearest Neighbour approximation for entropy as described in [1].
+
+    :param x, y: np.ndarray of shape (n_samples, n_dim)
+    :kwarg    k: number of neighbors to use to estimate entropy
+    :return: scalar MI score I(x;y)
+
+    References
+    ----------
+    [1] A. Kraskov, H. Stogbauer and P. Grassberger, "Estimating mutual
+        information". Phys. Rev. E 69, 2004.
+    """
+    # x, y = (n, d)
+    # metric = DistanceMetric.get_metric('euclidean')
+    # xx = metric.pairwise(x)
+    # yy = metric.pairwise(y)
+    # zz = np.maximum(xx, yy)
+    # zz.sort(axis=1)
+    # radi = np.nextafter(zz[:, k], 0)
+
+    xy = np.hstack((x, y))  # (n, 2*d)
+    nn = NearestNeighbors(metric="chebyshev", n_neighbors=k)
+    nn.fit(xy)
+    radi = nn.kneighbors()[0]
+    radi = np.nextafter(radi[:, -1], 0)
+
+    kd = KDTree(x, metric="chebyshev")
+    nx = kd.query_radius(x, radi, count_only=True, return_distance=False)
+    nx = np.array(nx) - 1.0
+
+    kd = KDTree(y, metric="chebyshev")
+    ny = kd.query_radius(y, radi, count_only=True, return_distance=False)
+    ny = np.array(ny) - 1.0
+
+    n_samples = len(xy)
+
+    mi = (
+        digamma(n_samples)
+        + digamma(k)
+        - np.mean(digamma(nx + 1))
+        - np.mean(digamma(ny + 1))
+    )
+
+    return max(0, mi)
 
 
 def get_cormat(x):
     """
     Get covariance matrix of atom fluctuations
-    :param x: atom positions over time
-    :type  x: np.array of shape (time, atoms, dims)
-    :return : the normalized covariance matrix
-    :return type: np.array (atoms, atoms)
+
+    :param x: atom positions over time, np.ndarray of shape (n_time, n_atoms, n_dims)
+    :return: the normalized covariance matrix, np.ndarray of shape (n_atoms, n_atoms)
     """
-    # dots = np.zeros((na, na))
-    # for i in range(nt):
-    #     dot = np.dot(fluct[i], fluct[i].T)
-    #     dots = dots + dot
+
     fluct = x - np.mean(x, axis=0)
     dots = 1 / x.shape[0] * np.einsum("ijk,ilk->jl", fluct, fluct)
 
@@ -197,6 +247,13 @@ def main():
         nargs="?",
         metavar="ASL",
     )
+    parser.add_argument(
+        "-k", help="number of neighbors to use to estimane entropy", type=int
+    )
+    parser.add_argument(
+        "-metric",
+        help="scikit-learn distance metric to estimate distances between fluctuations",
+    )
     args = parser.parse_args()
 
     if args.backend == "schr":
@@ -208,7 +265,7 @@ def main():
     nt, na, d = x.shape
 
     print("Calculating Generalized Correlations ...")
-    MI = get_MI(x, args.j, dump=args.pickle, out=args.out)
+    MI = get_MI(x, k=args.k, njobs=args.j, dump=args.pickle and args.out)
     print("Done.")
 
     with open(args.out + "_MI.dat", "w") as f:
