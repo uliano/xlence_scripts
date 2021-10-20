@@ -15,13 +15,16 @@ DEFAULT_CA = "default_CA"
 SCHR_CA = "a.pt CA"
 MDA_CA = "name CA"
 
-# ERROR: pickle is broken
+# ERROR: how to pass k to calculate_mi ??
 
 def _worker(k):
     def inner(pair):
         return calculate_mi(*pair, k=k)
 
     return inner
+
+def worker(pair):
+    return calculate_mi(*pair, k=6)
 
 
 def get_MI(x, k=6, njobs=1, dump=False):
@@ -37,12 +40,12 @@ def get_MI(x, k=6, njobs=1, dump=False):
 
     start_time = time.time()
     with mp.Pool(processes=njobs) as pool:
-        res = pool.imap(_worker(k), pairs)
-        MI[np.tril_indices_from(MI, -1)] = np.fromiter(res, dtype=np.float64)
-        # MI[np.tril_indices_from(MI, -1)] = np.fromiter(
-        #     tqdm(res, total=int(na * (na - 1) / 2)),
-        #     dtype=np.float64
-        # )
+        res = pool.imap(worker, pairs)
+        # MI[np.tril_indices_from(MI, -1)] = np.fromiter(res, dtype=np.float64)
+        MI[np.tril_indices_from(MI, -1)] = np.fromiter(
+            tqdm(res, total=int(na * (na - 1) / 2)),
+            dtype=np.float64
+        )
     print()
     print(
         f"finished {na} atoms for {nt} frames in {timedelta(seconds=time.time() - start_time)}"
