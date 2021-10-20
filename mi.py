@@ -15,6 +15,7 @@ DEFAULT_CA = "default_CA"
 SCHR_CA = "a.pt CA"
 MDA_CA = "name CA"
 
+# ERROR: pickle is broken
 
 def _worker(k):
     def inner(pair):
@@ -37,10 +38,11 @@ def get_MI(x, k=6, njobs=1, dump=False):
     start_time = time.time()
     with mp.Pool(processes=njobs) as pool:
         res = pool.imap(_worker(k), pairs)
-        MI[np.tril_indices_from(MI, -1)] = np.fromiter(
-            tqdm(res, total=int(na * (na - 1) / 2)),
-            dtype=np.float64
-        )
+        MI[np.tril_indices_from(MI, -1)] = np.fromiter(res, dtype=np.float64)
+        # MI[np.tril_indices_from(MI, -1)] = np.fromiter(
+        #     tqdm(res, total=int(na * (na - 1) / 2)),
+        #     dtype=np.float64
+        # )
     print()
     print(
         f"finished {na} atoms for {nt} frames in {timedelta(seconds=time.time() - start_time)}"
