@@ -51,7 +51,7 @@ def get_MI(x, k=6, njobs=1, dump=False):
         f"finished {na} atoms for {nt} frames in {timedelta(seconds=time.time() - start_time)}"
     )
 
-    MI += np.flip(MI)
+    MI += MI.T
 
     if dump:
         import pickle
