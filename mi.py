@@ -4,30 +4,22 @@ import argparse
 import multiprocessing as mp
 import time
 from datetime import timedelta
+from functools import partial
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import digamma
-from sklearn.neighbors import KDTree, NearestNeighbors
+from sklearn.neighbors import KDTree, NearestNeighbors, DistanceMetric
 from tqdm import tqdm
 
 DEFAULT_CA = "default_CA"
 SCHR_CA = "a.pt CA"
 MDA_CA = "name CA"
 
-# ERROR: how to pass k to calculate_mi ??
+def _worker(pair, k, metric):
+    return calculate_mi(*pair, k=k, metric=metric)
 
-def _worker(k):
-    def inner(pair):
-        return calculate_mi(*pair, k=k)
-
-    return inner
-
-def worker(pair):
-    return calculate_mi(*pair, k=6)
-
-
-def get_MI(x, k=6, njobs=1, dump=False):
+def get_MI(x, k=6, njobs=1, dump=False, metric='chebyshev'):
     nt, na, d = x.shape
     x = x - x.mean(axis=0)  # get atom fluctuations oround their mean position
     # normalize fluctuation interval between 0, 1 WARNING: is this required?
@@ -40,10 +32,10 @@ def get_MI(x, k=6, njobs=1, dump=False):
 
     start_time = time.time()
     with mp.Pool(processes=njobs) as pool:
-        res = pool.imap(worker, pairs)
-        # MI[np.tril_indices_from(MI, -1)] = np.fromiter(res, dtype=np.float64)
+        iterations = int(na * (na - 1) / 2)
+        res = pool.imap(partial(_worker, k=k, metric=metric), pairs, chunksize=iterations // njobs)
         MI[np.tril_indices_from(MI, -1)] = np.fromiter(
-            tqdm(res, total=int(na * (na - 1) / 2)),
+            tqdm(res, total=iterations),
             dtype=np.float64
         )
     print()
@@ -66,13 +58,14 @@ def get_MI(x, k=6, njobs=1, dump=False):
     return MI
 
 
-def calculate_mi(x, y, k=6):
+def calculate_mi(x, y, k=6, metric='chebyshev'):
     """
     Calculate Mutual Information between two continuous multidimensional random variables
     using Nearest Neighbour approximation for entropy as described in [1].
 
     :param x, y: np.ndarray of shape (n_samples, n_dim)
     :kwarg    k: number of neighbors to use to estimate entropy
+    :kwarg metric: metric to calculate distances between points, see sklearn KDTree metrics
     :return: scalar MI score I(x;y)
 
     References
@@ -81,28 +74,29 @@ def calculate_mi(x, y, k=6):
         information". Phys. Rev. E 69, 2004.
     """
     # x, y = (n, d)
-    # metric = DistanceMetric.get_metric('euclidean')
-    # xx = metric.pairwise(x)
-    # yy = metric.pairwise(y)
-    # zz = np.maximum(xx, yy)
-    # zz.sort(axis=1)
-    # radi = np.nextafter(zz[:, k], 0)
+    if metric == 'chebyshev':
+        xy = np.hstack((x, y))  # (n, 2*d)
+        nn = NearestNeighbors(metric="chebyshev", n_neighbors=k)
+        nn.fit(xy)
+        radi = nn.kneighbors()[0]
+        radi = np.nextafter(radi[:, -1], 0)
+    else:
+        metric = DistanceMetric.get_metric(metric)
+        xx = metric.pairwise(x)
+        yy = metric.pairwise(y)
+        zz = np.maximum(xx, yy)
+        zz.sort(axis=1)
+        radi = np.nextafter(zz[:, k], 0)
 
-    xy = np.hstack((x, y))  # (n, 2*d)
-    nn = NearestNeighbors(metric="chebyshev", n_neighbors=k)
-    nn.fit(xy)
-    radi = nn.kneighbors()[0]
-    radi = np.nextafter(radi[:, -1], 0)
-
-    kd = KDTree(x, metric="chebyshev")
+    kd = KDTree(x, metric=metric)
     nx = kd.query_radius(x, radi, count_only=True, return_distance=False)
     nx = np.array(nx) - 1.0
 
-    kd = KDTree(y, metric="chebyshev")
+    kd = KDTree(y, metric=metric)
     ny = kd.query_radius(y, radi, count_only=True, return_distance=False)
     ny = np.array(ny) - 1.0
 
-    n_samples = len(xy)
+    n_samples = len(x)
 
     mi = (
         digamma(n_samples)
@@ -253,11 +247,12 @@ def main():
         metavar="ASL",
     )
     parser.add_argument(
-        "-k", help="number of neighbors to use to estimane entropy", type=int
+        "-k", help="number of neighbors to use to estimane entropy, default 6", type=int, default=6, metavar='N'
     )
     parser.add_argument(
         "-metric",
         help="scikit-learn distance metric to estimate distances between fluctuations",
+        default='chebyshev'
     )
     args = parser.parse_args()
 
@@ -270,7 +265,7 @@ def main():
     nt, na, d = x.shape
 
     print("Calculating Generalized Correlations ...")
-    MI = get_MI(x, k=args.k, njobs=args.j, dump=args.pickle and args.out)
+    MI = get_MI(x, k=args.k, njobs=args.j, dump=args.pickle and args.out, metric=args.metric)
     print("Done.")
 
     with open(args.out + "_MI.dat", "w") as f:
@@ -279,7 +274,7 @@ def main():
             f.write(" ".join(str(i) for i in row))
             f.write("\n")
 
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(dpi=800)
     fig.suptitle("Mutual Information")
     plt.imshow(MI, origin="lower", cmap="inferno")
     plt.colorbar()
@@ -295,14 +290,14 @@ def main():
             for row in C:
                 f.write(" ".join(str(i) for i in row))
                 f.write("\n")
-        fig = plt.figure(figsize=(15, 15))
+        fig = plt.figure(dpi=800)
         fig.suptitle("Correlation Matrix")
         plt.imshow(C, origin="lower", cmap="inferno")
         plt.colorbar()
         fig.tight_layout()
         plt.savefig(args.out + "_Cor.png")
 
-        fig = plt.figure(figsize=(15, 15))
+        fig = plt.figure(dpi=800)
         fig.suptitle("MI/Cor Matrix")
         plt.imshow(np.tril(MI) + np.triu(C, k=1), origin="lower", cmap="inferno")
         plt.colorbar()
