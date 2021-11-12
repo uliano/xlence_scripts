@@ -118,12 +118,13 @@ def get_cormat(x):
 
     fluct = x - np.mean(x, axis=0)
     dots = 1 / x.shape[0] * np.einsum("ijk,ilk->jl", fluct, fluct)
+    
+    std = np.sqrt(np.diagonal(dots))
+    std_matrix = np.outer(std, std)
+    corr_matrix = dots / std_matrix
+    # corr_matrix = np.abs(corr_matrix)
 
-    diagonal = np.diag(dots)
-    norm_matrix = np.outer(diagonal, diagonal)
-    norm_matrix = np.sqrt(np.absolute(norm_matrix))
-    corr_matrix = np.divide(dots, norm_matrix)
-    return corr_matrix
+    return np.clip(corr_matrix, -1, 1)
 
 
 def preproc_schrodinger(args):
@@ -276,9 +277,9 @@ def main():
 
     fig = plt.figure(dpi=800)
     fig.suptitle("Mutual Information")
-    plt.imshow(MI, origin="lower", cmap="inferno")
+    plt.imshow(MI, origin="lower", cmap="inferno", vmin=0, vmax=1)
     plt.colorbar()
-    fig.tight_layout()
+    # fig.tight_layout()
     plt.savefig(args.out + "_MI.png")
 
     if args.corr:
@@ -292,34 +293,25 @@ def main():
                 f.write("\n")
         fig = plt.figure(dpi=800)
         fig.suptitle("Correlation Matrix")
-        plt.imshow(C, origin="lower", cmap="inferno")
+        plt.imshow(C, origin="lower", cmap="bwr", vmin=-1, vmax=1)
         plt.colorbar()
-        fig.tight_layout()
+        # fig.tight_layout()
         plt.savefig(args.out + "_Cor.png")
 
         fig = plt.figure(dpi=800)
-        fig.suptitle("MI/Cor Matrix")
-        plt.imshow(np.tril(MI) + np.triu(C, k=1), origin="lower", cmap="inferno")
+        fig.suptitle("MI $vs$ abs(Cor) Matrix")
+        plt.imshow(np.tril(MI) + np.triu(np.abs(C), k=1), origin="lower", cmap="inferno", vmin=0, vmax=1)
         plt.colorbar()
-        fig.tight_layout()
+        # fig.tight_layout()
         plt.savefig(args.out + "_MICor.png")
 
     print("All done.")
-    print(
-        r"""
-              ____
-            /____ `\
-           ||_  _`\ \
-     .-.   `|O, O  ||
-     | |    (/    -)\
-     | |    |`-'` |\`
-  __/  |    | _/  |
- (___) \.  _.\__. `\___
- (___)  )\/  \    _/  ~\.
- (___) . \   `--  _   `\
-  (__)-    ,/        (   |
-       `--~|         |   |
-           |         |   | ")
+    print( r"""
+|
+|  .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.  
+| / / \ \ / / \ S T A Y  I N F O R M E D\ / / \ \ / / \ \ 
+|`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`
++---------------------------------------------------------->
     """
     )
 
