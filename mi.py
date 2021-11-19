@@ -12,6 +12,8 @@ from scipy.special import digamma
 from sklearn.neighbors import KDTree, NearestNeighbors, DistanceMetric
 from tqdm import tqdm
 
+# TODO: try using scipy.stats.boxcox to normalize MI
+
 DEFAULT_CA = "default_CA"
 SCHR_CA = "a.pt CA"
 MDA_CA = "name CA"
