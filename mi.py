@@ -13,6 +13,8 @@ from sklearn.neighbors import KDTree, NearestNeighbors, DistanceMetric
 from tqdm import tqdm
 
 # TODO: try using scipy.stats.boxcox to normalize MI
+# TODO: implement center_of_mass
+# TODO: validate asl before running
 
 DEFAULT_CA = "default_CA"
 SCHR_CA = "a.pt CA"
@@ -255,7 +257,7 @@ def main():
     )
     parser.add_argument(
         "-metric",
-        help="scikit-learn distance metric to estimate distances between fluctuations",
+        help="scikit-learn distance metric to estimate distances between fluctuations. Default chebychev",
         default='chebyshev'
     )
     args = parser.parse_args()
@@ -296,7 +298,7 @@ def main():
                 f.write("\n")
         fig = plt.figure(dpi=800)
         fig.suptitle("Correlation Matrix")
-        plt.imshow(C, origin="lower", cmap="bwr", vmin=-1, vmax=1)
+        plt.imshow(C, origin="lower", cmap="bwr")
         plt.colorbar()
         # fig.tight_layout()
         plt.savefig(args.out + "_Cor.png")
