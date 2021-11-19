@@ -55,7 +55,8 @@ def get_MI(x, k=6, njobs=1, dump=False, metric='chebyshev'):
 
     # postprocess
     # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
-    MI = np.sqrt(1 - np.exp(-2 * MI))
+    # MI = np.sqrt(1 - np.exp(-2 * MI))
+    MI /= MI.max()
     MI[np.diag_indices_from(MI)] = 1
     return MI
 
@@ -279,7 +280,7 @@ def main():
 
     fig = plt.figure(dpi=800)
     fig.suptitle("Mutual Information")
-    plt.imshow(MI, origin="lower", cmap="inferno", vmin=0, vmax=1)
+    plt.imshow(MI, origin="lower", cmap="inferno")
     plt.colorbar()
     # fig.tight_layout()
     plt.savefig(args.out + "_MI.png")
@@ -302,7 +303,7 @@ def main():
 
         fig = plt.figure(dpi=800)
         fig.suptitle("MI $vs$ abs(Cor) Matrix")
-        plt.imshow(np.tril(MI) + np.triu(np.abs(C), k=1), origin="lower", cmap="inferno", vmin=0, vmax=1)
+        plt.imshow(np.tril(MI) + np.triu(np.abs(C), k=1), origin="lower", cmap="inferno")
         plt.colorbar()
         # fig.tight_layout()
         plt.savefig(args.out + "_MICor.png")
