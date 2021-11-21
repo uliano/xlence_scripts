@@ -189,11 +189,16 @@ def preproc_mda(args):
         align.AlignTraj(mobile, U, select=align_sel, in_memory=True).run()
         U = mobile
 
+    if args.com_by_res:
+        posgetter = lambda atoms: atoms.center_of_mass(compound='residues')
+    else:
+        posgetter = lambda atoms: atoms.positions
+
     x = []
     for sel in corr_sel:
         U.trajectory[0]
         atoms = U.select_atoms(sel)
-        x.append(np.array([atoms.positions for _ in U.trajectory[slicer]]))
+        x.append(np.array([posgetter(atoms) for _ in U.trajectory[slicer]]))
     x = np.concatenate(x, axis=1)
     return x
 
@@ -259,6 +264,11 @@ def main():
         "-metric",
         help="scikit-learn distance metric to estimate distances between fluctuations. Default chebychev",
         default='chebyshev'
+    )
+    parser.add_argument(
+        "-com_by_res",
+        action='store_true',
+        help='MI will be calculated on the centers of mass of residues specified by -asl'
     )
     args = parser.parse_args()
 
