@@ -13,7 +13,6 @@ from sklearn.neighbors import KDTree, NearestNeighbors, DistanceMetric
 from tqdm import tqdm
 
 # TODO: try using scipy.stats.boxcox to normalize MI
-# TODO: implement center_of_mass
 # TODO: validate asl before running
 
 DEFAULT_CA = "default_CA"
@@ -268,7 +267,7 @@ def main():
     parser.add_argument(
         "-com_by_res",
         action='store_true',
-        help='MI will be calculated on the centers of mass of residues specified by -asl'
+        help='MI will be calculated on the centers of mass of residues specified by -asl. (MDA Only)'
     )
     args = parser.parse_args()
 
