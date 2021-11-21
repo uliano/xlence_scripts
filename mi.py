@@ -13,7 +13,6 @@ from sklearn.neighbors import KDTree, NearestNeighbors, DistanceMetric
 from tqdm import tqdm
 
 # TODO: try using scipy.stats.boxcox to normalize MI
-# TODO: validate asl before running
 
 DEFAULT_CA = "default_CA"
 SCHR_CA = "a.pt CA"
@@ -172,6 +171,7 @@ def preproc_mda(args):
     align_sel = MDA_CA if args.align == DEFAULT_CA else args.align
     corr_sel = [MDA_CA] if args.asl == DEFAULT_CA else args.asl
 
+
     top = args.cms
     slicer = (
         slice(*[int(i) if i else None for i in args.s.split(":")])
@@ -180,6 +180,14 @@ def preproc_mda(args):
     )
 
     U = mda.Universe(top, *args.t)
+
+    # validate selection
+    try:
+        U.select_atoms(align_sel)
+        for sel in corr_sel:
+            U.select_atoms(sel)
+    except mda.SelectionError as exc:
+        raise exc
 
     if args.align:
         print(f'Aligning trajectory to "{align_sel}"')
