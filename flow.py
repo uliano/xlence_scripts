@@ -30,11 +30,11 @@ from tqdm import tqdm
 # - [ ] FIXME: extra care in handling empty paths
 # - [x] store/load data
 # - [ ] generate some statistics log (i.e n molecules, n paths, mean elapsed time in site)
-# - [ ] mdanalysis 
+# - [x] mdanalysis 
 # - [ ] maybe add support for variable n_atom_per_mol (multiple obj types)
 # - [x] clustering
 #   - [ ] cluster entry/exit points of scope
-# - [-] path smoothing
+# - [x] path smoothing
 # - [ ] multiprocessing
 # - [x] draw volumes
 #   - [x] FEAT: make color ramp
@@ -417,11 +417,10 @@ def find_objects_by_asl(trj, obj_atoms, selection):
 
     obj_group = obj_atoms.select_atoms(selection, updating=True)
 
-    in_dict = {} # residue: [which frames res is within selection]
+    in_dict = {} # residue: [list of frames in which `res` is within selection]
     for fr in trj:
-        for res in obj_group.residues:
-            in_dict.setdefault(res, [])
-            in_dict[res].append(fr.frame)
+        for res in obj_group.residues: # apply selection for each frame
+            in_dict.setdefault(res, []).append(fr.frame)
 
     groups_ok = [res.atoms for res in sorted(in_dict.keys())]
     atoms = mda.AtomGroup([a for a in itertools.chain.from_iterable(groups_ok)])
@@ -431,10 +430,10 @@ def find_objects_by_asl(trj, obj_atoms, selection):
     for i, res in enumerate(atoms.residues):
         is_in_matrix[in_dict[res], i] = True
 
-    return atoms, is_in_matrix, None # no hulls...
+    return atoms, is_in_matrix, []# no hulls...
 
 
-def get_centroids(points, eps=1, min_samples=5):
+def get_centroids(points, eps=1.0, min_samples=5):
     db =  DBSCAN(eps=eps, min_samples=min_samples, metric='euclidean').fit(points)
     labels = db.labels_
     cc = np.array([points[labels == v].mean(axis=0) for v in set(labels) if v != -1])
@@ -492,6 +491,7 @@ def main():
             metavar='E,M')
     parser.add_argument('-update_scope', default=False, action='store_true', help='if scope_asl should be updated, default Flase')
     parser.add_argument('-update_site', default=False, action='store_true', help='if site_asl should be updated, default Flase')
+    parser.add_argument('-find_by_asl', default=False, action='store_true', help='change object identification method. -site_asl should provide the criterion for object selection.')
     args = parser.parse_args()
 
     scope_asl = args.scope_asl
@@ -516,12 +516,20 @@ def main():
         obj_atoms = u.select_atoms(obj_asl)
 
         print("Selecting objects to track...", flush=True)
-        obj_in_site_matrix, site_hulls = find_objects_in_hull(trj, obj_atoms, site_atoms)
+        if args.find_by_asl:
+            obj_atoms_ok, obj_in_site_matrix_ok, site_hulls = find_objects_by_asl(trj, obj_atoms, site_asl)
+            print(f'WARNING: option `find_by_asl` is experimental, editing {args.out}_pymol.py may be required.')
+            # raise NotImplementedError
 
-        # find indices of the objects that enter site at least once
-        obj_ok_i = np.nonzero(np.any(obj_in_site_matrix, axis=0))[0]
-        obj_res_ok = np.array(obj_atoms.residues)[obj_ok_i]
-        obj_atoms_ok = mda.AtomGroup([a for atoms in obj_res_ok for a in atoms])
+        else:
+            obj_in_site_matrix, site_hulls = find_objects_in_hull(trj, obj_atoms, site_atoms)
+
+            # find indices of the objects that enter site at least once
+            obj_ok_i = np.nonzero(np.any(obj_in_site_matrix, axis=0))[0]
+            obj_res_ok = np.array(obj_atoms.residues)[obj_ok_i]
+            obj_atoms_ok = mda.AtomGroup([a for atoms in obj_res_ok for a in atoms])
+            obj_in_site_matrix_ok = obj_in_site_matrix[:, obj_ok_i],
+
 
         print("Done.")
 
@@ -533,7 +541,7 @@ def main():
         paths = Path.make_paths(
             trj,
             obj_atoms_ok,
-            obj_in_site_matrix[:, obj_ok_i],
+            obj_in_site_matrix_ok,
             obj_in_scope_matrix,
         )
 
@@ -547,7 +555,7 @@ def main():
         _interpf, _smoothf, _splorder = args.smooth.split(',')
         _interpf, _smoothf, _splorder = int(_interpf), float(_smoothf), int(_splorder)
     else:
-        _interpf, _smoothf, _splorder = [None] * 3
+        _interpf = _smoothf = _splorder = None
 
     paths = PathCollection(paths, interpf=_interpf, smoothf=_smoothf, splorder=_splorder)
     print("Done.")
