@@ -83,7 +83,7 @@ def main():
     nbins = (
         args.bins
         and [int(bin) for bin in args.bins.split(",")]
-        or 2 * iqr(data, axis=0) / (data.shape[0] ** (1 / 3))
+        or 5 * iqr(data, axis=0) / (data.shape[0] ** (1 / 3))
     )
 
     hist = binned_statistic_dd(data, dv, statistic=lambda dv: len(dv) or np.nan, bins=nbins)  # type: ignore
