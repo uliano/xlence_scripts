@@ -17,10 +17,10 @@ def exponential_average(a, dv, hist, T):
     def funct(dv_j):
         if not len(dv_j):
             return np.nan
-        return np.mean(np.exp(beta(T) * dv_j))
+        return np.mean(np.exp(beta(T) * dv_j.astype('float128')))
 
     weights = binned_statistic_dd(a, dv, statistic=funct, binned_statistic_result=hist)  # type: ignore
-    return weights.statistic / np.nansum(weights.statistic)
+    return weights.statistic
 
 
 def maclaurin_series(a, dv, hist, T, k=5):
@@ -32,7 +32,7 @@ def maclaurin_series(a, dv, hist, T, k=5):
         )
 
     weights = binned_statistic_dd(a, dv, statistic=funct, binned_statistic_result=hist)  # type: ignore
-    return weights.statistic / np.nansum(weights.statistic)
+    return weights.statistic
 
 
 def cumulant_expansion(a, dv, hist, T, k=3):
@@ -46,7 +46,7 @@ def cumulant_expansion(a, dv, hist, T, k=3):
 
     # this is the logarithm of mean(exp(beta*dv_j))
     weights = binned_statistic_dd(a, dv, statistic=funct, binned_statistic_result=hist)  # type: ignore
-    return weights.statistic  # - np.log(np.nansum(np.exp(weights.statistic)))
+    return weights.statistic
 
 
 def main():
@@ -78,28 +78,31 @@ def main():
     args = parser.parse_args()
 
     data = np.genfromtxt(args.data)
-    dv = np.genfromtxt(args.dV)[:, -1]
+    dv = np.genfromtxt(args.dV)
 
     nbins = (
         args.bins
         and [int(bin) for bin in args.bins.split(",")]
-        or 5 * iqr(data, axis=0) / (data.shape[0] ** (1 / 3))
+        or np.ptp(data, axis=0) / (2 * iqr(data, axis=0) / (data.shape[0] ** (1 / 3)))
     )
 
     hist = binned_statistic_dd(data, dv, statistic=lambda dv: len(dv) or np.nan, bins=nbins)  # type: ignore
-    pb = hist.statistic / np.nansum(hist.statistic)  # count to density
+    pb = hist.statistic / np.nansum(hist.statistic)  # count to density, biased probability
 
     if args.method == "exp":
         weights = exponential_average(data, dv, hist, args.t)
-        pmf = -1 / beta(args.t) * np.log(pb * weights)
+        p = pb * weights
+        pmf = -1 / beta(args.t) * np.log(p / np.nansum(p))
     elif args.method == "maclaurin":
         kwargs = dict(k=args.k) if args.k else {}
         weights = maclaurin_series(data, dv, hist, args.t, **kwargs)
-        pmf = -1 / beta(args.t) * np.log(pb * weights)
+        p = pb * weights
+        pmf = -1 / beta(args.t) * np.log(p / np.nansum(p))
     elif args.method == "cumulant":
         kwargs = dict(k=args.k) if args.k else {}
         weights = cumulant_expansion(data, dv, hist, args.t, **kwargs)
-        pmf = -1 / beta(args.t) * (np.log(pb) + weights)
+        p = np.log(pb) + weights # log(p) = log(pb) + log(weights)
+        pmf = -1 / beta(args.t) * p
     else:
         print("Unknown method. Exiting.")
         return
