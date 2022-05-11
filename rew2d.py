@@ -147,7 +147,8 @@ def main():
     plt.colorbar()
     plt.savefig(args.output + ".png", dpi=600)
 
-    result = {'xedge': cv1, 'yedge': cv2, 'pmf': pmf, 'minx': t1, 'miny': t2,  'frames': frames}
+    result = {'edge1': cv1, 'edge2': cv2, 'pmf': pmf, 'min1': t1, 'min2': t2,  'frames_min': frames,
+              'binnumber': hist.binnumber}
 
     with open(args.output + '.pickle', 'wb') as fp:
         pickle.dump(result, fp)
