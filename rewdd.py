@@ -125,7 +125,11 @@ def parse_args():
     args = parser.parse_args()
 
     data = np.genfromtxt(args.data)
-    ndata, ndim = data.shape
+    if len(data.shape) == 2:
+        ndata, ndim = data.shape
+    else:
+        ndata = data.shape
+        ndim=1
     with open(args.data, 'r') as f:
         line = f.readline()
         if line[0] == '#':
@@ -191,9 +195,14 @@ def plot_1d(edge, cv, array, title, filename):
 
 def main():
     data, dv, ndata, ndim, nbin, cv, mins, maxs, basename, order, temp, method, energy_range, args = parse_args()
-    data_range = [r for r in zip(mins, maxs)]
+    if ndim > 1:
+        data_range = [r for r in zip(mins, maxs)]
+    else:
+        data_range = ((mins, maxs),)
 
-    hist = binned_statistic_dd(data, dv, statistic=lambda dv: len(dv) or np.nan, bins=nbin, range=data_range)  # type: ignore
+    hist = binned_statistic_dd(data, dv, statistic=lambda dv: len(dv) or 0, bins=nbin , range=data_range)  # type: ignore
+    bn = hist.binnumber.copy()
+
     pb = hist.statistic / np.nansum(hist.statistic)  # count to density, biased probability
 
     if method == "exp":
@@ -218,9 +227,9 @@ def main():
     pmf -= np.nanmin(pmf)
 
     if energy_range:
-        seeked_bins = np.where((pmf >= energy_range[0]) & (pmf <= energy_range[1]))
-        raveled_bins = np.ravel_multi_index(seeked_bins, pmf.shape)
-        frames = [np.where(hist.binnumber == bin)[0].tolist() for bin in raveled_bins]
+        seeked_bins = np.nonzero((pmf >= energy_range[0]) & (pmf <= energy_range[1]))
+        raveled_bins = np.ravel_multi_index(seeked_bins, pmf.shape, order='F')
+        frames = [np.nonzero(hist.binnumber == bin)[0].tolist() for bin in raveled_bins]
         frames = [frame for sublist in frames for frame in sublist]
         with open(basename + '_frames.dat', 'w') as fp:
             for frame in frames:
