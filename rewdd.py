@@ -53,9 +53,9 @@ def cumulant_expansion(a, dv, hist, T, k=3):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("data", help="collective variables (ndata, ndimensions)")
+    parser.add_argument("-data", help="collective variables (ndata, ndimensions)")
     parser.add_argument(
-        "dV", help="bias potential (ndata, ) but reads the last column anyway..."
+        "-dv", help="bias potential (ndata, ) but reads the last column anyway..."
     )
     parser.add_argument(
         "-k",
@@ -133,7 +133,7 @@ def parse_args():
         else:
             cv = [f'variable{i+1}' for i in range(ndim)]
 
-    dv = np.genfromtxt(args.dV)
+    dv = np.genfromtxt(args.dv)
     if dv.ndim == 2:
         dv = dv[:, -1]
 
