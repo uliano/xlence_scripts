@@ -118,6 +118,16 @@ def main():
     plt.colorbar()
     plt.savefig(args.out + ".png", dpi=600)
 
+    plt.figure()
+    plt.contourf(cv1[:-1], cv2[:-1], pb.T, cmap=cmap, origin="lower")
+    plt.colorbar()
+    plt.savefig(args.out + "_hist.png", dpi=600)
+
+    plt.figure()
+    plt.contourf(cv1[:-1], cv2[:-1], weights.T, cmap=cmap, origin="lower")
+    plt.colorbar()
+    plt.savefig(args.out + "_weights.png", dpi=600)
+
 
 if __name__ == "__main__":
     main()
