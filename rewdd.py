@@ -142,9 +142,9 @@ def parse_args():
         dv = dv[:, -1]
 
     if ',' in args.bins:
-        nbin = [int(e) for e in args.bins.split(',')]
+        nbin = tuple([int(e) for e in args.bins.split(',')])
     else:
-        nbin = [int(args.bins) for _ in range(ndim)]
+        nbin = tuple([int(args.bins) for _ in range(ndim)])
 
     if args.min:
         if ',' in args.min:
@@ -200,8 +200,13 @@ def main():
     else:
         data_range = ((mins, maxs),)
 
-    hist = binned_statistic_dd(data, dv, statistic=lambda dv: len(dv) or 0, bins=nbin , range=data_range)  # type: ignore
-    bn = hist.binnumber.copy()
+    hist = binned_statistic_dd(data, dv, statistic=lambda dv: len(dv) or np.nan, bins=nbin , range=data_range)  # type: ignore
+    bn = hist.binnumber
+    binnr_fix = []
+    for bn in hist.binnumber:
+        indices = np.unravel_index(bn, np.array(nbin) + 2, order='C')
+        indices = [axis - 1 for axis in indices]
+        binnr_fix.append(np.ravel_multi_index(indices, nbin))
 
     pb = hist.statistic / np.nansum(hist.statistic)  # count to density, biased probability
 
@@ -227,15 +232,11 @@ def main():
     pmf -= np.nanmin(pmf)
 
     if energy_range:
-        binnr_fix = []
-        for bn in hist.binnumber:
-            indices = np.unravel_index(bn, np.array(pmf.shape) + 2, order='C')
-            indices = [axis - 1 for axis in indices]
-            binnr_fix.append(np.ravel_multi_index(indices, pmf.shape))
         seeked_bins = np.nonzero((pmf >= energy_range[0]) & (pmf <= energy_range[1]))
-        raveled_bins = np.ravel_multi_index(seeked_bins, pmf.shape)
-        frames = [np.nonzero(hist.binnumber == bin)[0].tolist() for bin in raveled_bins]
-        frames = [frame for sublist in frames for frame in sublist]
+        raveled_bins = np.ravel_multi_index(seeked_bins, nbin)
+        frames = []
+        for bin in raveled_bins:
+            frames.extend(np.nonzero(binnr_fix == bin)[0])
         with open(basename + '_frames.dat', 'w') as fp:
             for frame in frames:
                 fp.write(f'{frame}\n')
