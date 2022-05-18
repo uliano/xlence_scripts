@@ -227,8 +227,13 @@ def main():
     pmf -= np.nanmin(pmf)
 
     if energy_range:
+        binnr_fix = []
+        for bn in hist.binnumber:
+            indices = np.unravel_index(bn, np.array(pmf.shape) + 2, order='C')
+            indices = [axis - 1 for axis in indices]
+            binnr_fix.append(np.ravel_multi_index(indices, pmf.shape))
         seeked_bins = np.nonzero((pmf >= energy_range[0]) & (pmf <= energy_range[1]))
-        raveled_bins = np.ravel_multi_index(seeked_bins, pmf.shape, order='F')
+        raveled_bins = np.ravel_multi_index(seeked_bins, pmf.shape)
         frames = [np.nonzero(hist.binnumber == bin)[0].tolist() for bin in raveled_bins]
         frames = [frame for sublist in frames for frame in sublist]
         with open(basename + '_frames.dat', 'w') as fp:
