@@ -205,11 +205,11 @@ def main():
     binnr_fix = []
     for bn in hist.binnumber:
         indices = np.unravel_index(bn, np.array(nbin) + 2, order='C')
-        if 0 in indices or np.prod(np.array(nbin) + 2) in indices:
+        indices = np.array(indices)
+        if 0 in indices or np.any([i > j for i, j in zip(indices, nbin)]):
             binnr_fix.append(-1)
             continue
-        indices = [axis - 1 for axis in indices]
-        binnr_fix.append(np.ravel_multi_index(indices, nbin))
+        binnr_fix.append(np.ravel_multi_index(indices - 1, nbin))
 
     pb = hist.statistic / np.nansum(hist.statistic)  # count to density, biased probability
 
