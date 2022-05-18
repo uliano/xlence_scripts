@@ -205,7 +205,7 @@ def main():
     binnr_fix = []
     for bn in hist.binnumber:
         indices = np.array(np.unravel_index(bn, np.array(nbin) + 2))
-        if np.all([ 0 < i < j for i, j in zip(indices, nbin)]):
+        if np.all([ 0 < i <= j for i, j in zip(indices, nbin)]):
             binnr_fix.append(np.ravel_multi_index(indices - 1, nbin))
         else:
             binnr_fix.append(np.nan)
