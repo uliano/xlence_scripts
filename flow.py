@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 """
 File: trj_flow.py
 Author: Tommaso laurenzi
