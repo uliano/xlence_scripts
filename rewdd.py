@@ -145,7 +145,7 @@ def plot_dd(edges, cvs, data, title, filename):
     ndim = len(edges)
     for first, second in itertools.combinations(range(ndim), 2):
         reduce_dims = tuple(set(range(ndim)) - set((first, second)))
-        data_slice = data.nanmean(axis=reduce_dims)
+        data_slice = np.nanmean(data, axis=reduce_dims)
         fname = f"{filename}_{cvs[first]}_{cvs[second]}_pmf.png"
         plot_2d(
             edges[first],
