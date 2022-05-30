@@ -233,13 +233,13 @@ def main():
 
     if args.min:
         validate_arg(args.min, "min", ndim)
-        mins = args.mins if len(args.mins) == ndim else tuple(list(args.mins) * ndim)
+        mins = args.min if len(args.min) == ndim else tuple(list(args.min) * ndim)
     else:
         mins = tuple(data.min(axis=0))
 
     if args.max:
         validate_arg(args.max, "max", ndim)
-        maxs = args.maxs if len(args.maxs) == ndim else tuple(list(args.maxs) * ndim)
+        maxs = args.max if len(args.max) == ndim else tuple(list(args.max) * ndim)
     else:
         maxs = tuple(data.max(axis=0))
 
