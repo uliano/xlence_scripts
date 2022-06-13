@@ -144,7 +144,7 @@ def plot_2d(edge1, edge2, cv1, cv2, vmin, vmax, data, title, filename):
     plt.title(title)
 
     # plt.imshow(pmf.T, cmap=cmap, origin="lower", interpolation='gaussian')
-    plt.colorbar(contour)
+    plt.colorbar(contour, boundaries=np.linspace(vmin, vmax, len(contour.levels)))
     plt.savefig(filename, dpi=600)
 
 
