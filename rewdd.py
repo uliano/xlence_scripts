@@ -7,6 +7,8 @@ import pickle
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+from matplotlib.cm import ScalarMappable
 import numpy as np
 from scipy.special import factorial
 from scipy.stats import binned_statistic_dd, iqr, kstat, moment
@@ -125,12 +127,17 @@ def parse_args():
 
     return args
 
+def make_ScalarMappable(vmin, vmax):
+    norm = Normalize(vmin, vmax)
+    sm = ScalarMappable(norm=norm, cmap="viridis")
+    return sm
+
 
 def plot_2d(edge1, edge2, cv1, cv2, vmin, vmax, data, title, filename):
     vmin = vmin or np.nanmin(data)
     vmax = vmax or np.nanmax(data)
     plt.figure()
-    contour = plt.contourf(
+    plt.contourf(
         edge2[:-1],
         edge1[:-1],
         data,
@@ -144,7 +151,8 @@ def plot_2d(edge1, edge2, cv1, cv2, vmin, vmax, data, title, filename):
     plt.title(title)
 
     # plt.imshow(pmf.T, cmap=cmap, origin="lower", interpolation='gaussian')
-    plt.colorbar(contour, boundaries=np.linspace(vmin, vmax, len(contour.levels)))
+    sm = make_ScalarMappable(vmin, vmax)
+    plt.colorbar(mappable=sm)
     plt.savefig(filename, dpi=600)
 
 
