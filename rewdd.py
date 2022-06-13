@@ -114,6 +114,11 @@ def parse_args():
         help="energy range for selecting frames. max (min=0 is then assumed) or min,max",
         type=lambda args: tuple(float(i) for i in args.split(",")),
     )
+    parser.add_argument(
+        "-ep",
+        help="energy range for plotting.",
+        type=lambda args: tuple(float(i) for i in args.split(",")),
+    )
 
     parser.add_argument("-o", "--output", help="output prefix", default="reweighted")
     args = parser.parse_args()
@@ -121,27 +126,40 @@ def parse_args():
     return args
 
 
-def plot_2d(edge1, edge2, cv1, cv2, data, title, filename):
+def plot_2d(edge1, edge2, cv1, cv2, vmin, vmax, data, title, filename):
+    vmin = vmin or np.nanmin(data)
+    vmax = vmax or np.nanmax(data)
     plt.figure()
-    plt.contourf(edge2[:-1], edge1[:-1], data, cmap="viridis", origin="lower")
+    contour = plt.contourf(
+        edge2[:-1],
+        edge1[:-1],
+        data,
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+        origin="lower",
+    )
     plt.ylabel(cv1)
     plt.xlabel(cv2)
     plt.title(title)
 
     # plt.imshow(pmf.T, cmap=cmap, origin="lower", interpolation='gaussian')
-    plt.colorbar()
+    plt.colorbar(contour)
     plt.savefig(filename, dpi=600)
 
 
-def plot_1d(edge, cv, data, title, filename):
+def plot_1d(edge, cv, vmin, vmax, data, title, filename):
+    vmin = vmin or np.nanmin(data)
+    vmax = vmax or np.nanmax(data)
     plt.figure()
     plt.plot(edge[:-1], data, linestyle="-")
+    plt.ylim((vmin, vmax))
     plt.ylabel(cv)
     plt.title(title)
     plt.savefig(filename, dpi=600)
 
 
-def plot_dd(edges, cvs, data, title, filename):
+def plot_dd(edges, cvs, vmin, vmax, data, title, filename):
     ndim = len(edges)
     for first, second in itertools.combinations(range(ndim), 2):
         reduce_dims = tuple(set(range(ndim)) - set((first, second)))
@@ -151,6 +169,8 @@ def plot_dd(edges, cvs, data, title, filename):
             edges[first],
             edges[second],
             cvs[first],
+            vmin,
+            vmax,
             cvs[second],
             data_slice,
             title,
@@ -249,6 +269,12 @@ def main():
     else:
         energy_range = None
 
+    if args.ep:
+        validate_arg(args.ep, "ep", 2)
+        plot_range = args.ep if len(args.ep) > 1 else (0, args.ep[0])
+    else:
+        plot_range = (None, None)
+
     data_range = tuple(r for r in zip(mins, maxs))
 
     hist, binnumber, weights, pmf = calculate_pmf(
@@ -269,13 +295,13 @@ def main():
 
     if ndim == 1:
         plotter = plot_1d
-        plot_args = (edges[0], cv[0])
+        plot_args = (edges[0], cv[0], *plot_range)
     elif ndim == 2:
         plotter = plot_2d
-        plot_args = (*edges, *cv)
+        plot_args = (*edges, *cv, *plot_range)
     else:
         plotter = plot_dd
-        plot_args = (edges, cv)
+        plot_args = (edges, cv, *plot_range)
 
     plotter(*plot_args, pmf, f"{basename} pmf", basename + "_pmf.png")  # type: ignore
 
