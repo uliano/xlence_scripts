@@ -7,9 +7,9 @@ import pickle
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
-from matplotlib.cm import ScalarMappable
 import numpy as np
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from scipy.special import factorial
 from scipy.stats import binned_statistic_dd, iqr, kstat, moment
 
@@ -126,6 +126,7 @@ def parse_args():
     args = parser.parse_args()
 
     return args
+
 
 def make_ScalarMappable(vmin, vmax):
     norm = Normalize(vmin, vmax)
