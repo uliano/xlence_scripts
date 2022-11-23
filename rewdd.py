@@ -127,6 +127,12 @@ def parse_args():
         type=lambda args: tuple(float(i) for i in args.split(",")),
     )
 
+    parser.add_argument(
+        "-title",
+        help="plot title.",
+        type=str,
+    )
+
     parser.add_argument("-o", "--output", help="output prefix", default="reweighted")
     args = parser.parse_args()
 
@@ -317,7 +323,10 @@ def main():
         plotter = plot_dd
         plot_args = (edges, cv, *plot_range)
 
-    plotter(*plot_args, pmf, f"{basename} pmf", basename + "_pmf.png")  # type: ignore
+    if args.title:
+        plotter(*plot_args, pmf, args.title, basename + "_pmf.png")  # type: ignore
+    else:
+        plotter(*plot_args, pmf, f"{basename} pmf", basename + "_pmf.png")  # type: ignore
 
     if args.weights:
         plotter(*plot_args, weights, f"{basename} weights", basename + "_weights.png")  # type: ignore
