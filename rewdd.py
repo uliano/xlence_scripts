@@ -59,7 +59,12 @@ def cumulant_expansion(a, dv, hist, T, k=3):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="""
+    Accelerated MD reweighting.
+    Plot axis labels can be specified in the first, commented with #, line of the CV data file,
+    while the plot title is derived from the output."
+    """)
+
     parser.add_argument("-data", help="collective variables (ndata, ndimensions)")
     parser.add_argument(
         "-dv", help="bias potential (ndata, ) but reads the last column anyway..."
