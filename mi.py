@@ -48,15 +48,12 @@ def get_MI(x, k=6, njobs=1, dump=False, metric='chebyshev'):
     MI += MI.T
 
     if dump:
-        import pickle
-
-        with open(dump + ".pickle", "wb") as f:
-            pickle.dump(MI, f)
+        np.savetxt(dump + "_raw.dat", MI)
 
     # postprocess
     # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
-    # MI = np.sqrt(1 - np.exp(-2 * MI))
-    MI /= MI.max()
+    MI = (1 - np.exp(-2/3 * MI)) ** (-1/2)
+    # MI /= MI.max()
     MI[np.diag_indices_from(MI)] = 1
     return MI
 
@@ -252,7 +249,7 @@ def main():
     )
     parser.add_argument("-s", help="slicer", metavar="START:END:STEP")
     parser.add_argument(
-        "-pickle", help="dump unmodified MI matrix to pickle file", action="store_true"
+        "-raw", help="dump unmodified MI matrix", action="store_true"
     )
     parser.add_argument(
         "-corr", help="calculate the correlation matrix", action="store_true"
@@ -288,7 +285,7 @@ def main():
     nt, na, d = x.shape
 
     print("Calculating Generalized Correlations ...")
-    MI = get_MI(x, k=args.k, njobs=args.j, dump=args.pickle and args.out, metric=args.metric)
+    MI = get_MI(x, k=args.k, njobs=args.j, dump=args.raw and args.out, metric=args.metric)
     print("Done.")
 
     with open(args.out + "_MI.dat", "w") as f:
