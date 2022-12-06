@@ -51,8 +51,8 @@ def get_MI(x, k=6, njobs=1, dump=False, metric='chebyshev'):
         np.savetxt(dump + "_raw.dat", MI)
 
     # postprocess
-    # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf
-    MI = (1 - np.exp(-2/3 * MI)) ** (-1/2)
+    # eq. 9 from https://www.mpibpc.mpg.de/276284/paper_generalized_corr_lange.pdf NOTE: -1/2 => 1/2 (check source code g_corr::pearsify)
+    MI = np.sqrt(1 - np.exp(-2/3 * MI))
     # MI /= MI.max()
     MI[np.diag_indices_from(MI)] = 1
     return MI
