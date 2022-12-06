@@ -59,7 +59,12 @@ def cumulant_expansion(a, dv, hist, T, k=3):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="""
+    Accelerated MD reweighting.
+    Plot axis labels can be specified in the first, commented with #, line of the CV data file,
+    while the plot title is derived from the output."
+    """)
+
     parser.add_argument("-data", help="collective variables (ndata, ndimensions)")
     parser.add_argument(
         "-dv", help="bias potential (ndata, ) but reads the last column anyway..."
@@ -120,6 +125,12 @@ def parse_args():
         "-ep",
         help="energy range for plotting.",
         type=lambda args: tuple(float(i) for i in args.split(",")),
+    )
+
+    parser.add_argument(
+        "-title",
+        help="plot title.",
+        type=str,
     )
 
     parser.add_argument("-o", "--output", help="output prefix", default="reweighted")
@@ -312,7 +323,10 @@ def main():
         plotter = plot_dd
         plot_args = (edges, cv, *plot_range)
 
-    plotter(*plot_args, pmf, f"{basename} pmf", basename + "_pmf.png")  # type: ignore
+    if args.title:
+        plotter(*plot_args, pmf, args.title, basename + "_pmf.png")  # type: ignore
+    else:
+        plotter(*plot_args, pmf, f"{basename} pmf", basename + "_pmf.png")  # type: ignore
 
     if args.weights:
         plotter(*plot_args, weights, f"{basename} weights", basename + "_weights.png")  # type: ignore
