@@ -180,7 +180,8 @@ def preproc_mda(args):
 
     # validate selection
     try:
-        U.select_atoms(align_sel)
+        if args.align:
+            U.select_atoms(align_sel)
         for sel in corr_sel:
             U.select_atoms(sel)
     except mda.SelectionError as exc:
