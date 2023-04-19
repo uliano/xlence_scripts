@@ -406,9 +406,8 @@ def find_objects_in_hull(trj, obj_atoms, hull_atoms):
         hulls.append(ConvexHull(points))
 
         # find which object atoms are found within site hull
-        is_in_hull_matrix[i] = (
-            Delaunay(points).find_simplex(p_obj) >= 0
-        )  # bool ndarray(na_obj,)
+        is_in_hull_matrix[i] = Delaunay(points).find_simplex(p_obj) >= 0
+          # bool ndarray(na_obj,)
 
     return is_in_hull_matrix, hulls
 
