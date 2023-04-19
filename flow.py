@@ -527,7 +527,7 @@ def main():
             # find indices of the objects that enter site at least once
             obj_ok_i = np.nonzero(np.any(obj_in_site_matrix, axis=0))[0]
             obj_res_ok = np.array(obj_atoms.residues)[obj_ok_i]
-            obj_atoms_ok = mda.AtomGroup([a for atoms in obj_res_ok for a in atoms])
+            obj_atoms_ok = mda.AtomGroup([a for res in obj_res_ok for a in res.atoms])
             obj_in_site_matrix_ok = obj_in_site_matrix[:, obj_ok_i],
 
 
