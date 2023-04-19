@@ -372,8 +372,8 @@ class Path:
         
         # loading all positions into memory seems the fastest way...
         obj_positions = np.empty((len(obj_atoms.residues), len(trj), 3))
-        for fr in tqdm(trj):
-            obj_positions[:, fr.frame, :] = obj_atoms.center_of_mass(compound='residues')
+        for i, _ in enumerate(tqdm(trj)):
+            obj_positions[:, i, :] = obj_atoms.center_of_mass(compound='residues')
 
         paths = []
         for pos, in_site, in_scope in tqdm(zip( 
