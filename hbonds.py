@@ -8,7 +8,7 @@ import statsmodels.api as sm
 lowess = sm.nonparametric.lowess
 
 
-plt.style.use('seaborn-darkgrid')
+plt.style.use('seaborn-v0_8-darkgrid'
 
 # here set the number of different plots
 colors = sns.color_palette("hls", 9)
