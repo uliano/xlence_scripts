@@ -9,7 +9,8 @@ from functools import partial
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import digamma
-from sklearn.neighbors import KDTree, NearestNeighbors, DistanceMetric
+from sklearn.neighbors import KDTree, NearestNeighbors
+from sklearn.metrics import DistanceMetric
 from tqdm import tqdm
 
 # TODO: try using scipy.stats.boxcox to normalize MI
