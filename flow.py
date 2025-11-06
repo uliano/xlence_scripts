@@ -319,12 +319,12 @@ class Path:
     @property
     def start(self):
         items = self._collect('start')
-        return np.vstack(items)
+        return np.vstack(items) if items else []
 
     @property
     def end(self):
         items = self._collect('end')
-        return np.vstack(items)
+        return np.vstack(items) if items else []
 
 
     def _make_subpaths(self):
